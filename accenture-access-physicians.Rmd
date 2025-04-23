@@ -3495,7 +3495,7 @@ reactable(
 #     
 reactable(
   provider_merged,
-  elementId = "access-metrics",
+  elementId = "access-metrics-prov",
   # elementId = "referral-vol-download-table",
   style = list(fontFamily = 'Calibri',
                  fontSize = '14px'),
