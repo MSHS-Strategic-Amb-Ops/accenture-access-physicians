@@ -1840,8 +1840,8 @@ provider_merged <- provider_merged %>%
          )
 
 
-# require(openxlsx)
-# write.xlsx(department_merged, "department_merged_org_041725.xlsx")
+require(openxlsx)
+write.xlsx(provider_merged, "Metric Overview by Provider_042325.xlsx")
 
 ```
 
@@ -3474,12 +3474,12 @@ ________________________________________________________________________________
 ```{r By Provider Output, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-htmltools::browsable(
-  tagList(
-    tags$button(
-      tagList(fontawesome::fa("download"), "Download Table"),
-      onclick = "Reactable.downloadDataCSV('access-metrics-prov', 'Metric Overview by Provider')"
-    ),
+# htmltools::browsable(
+#   tagList(
+#     tags$button(
+#       tagList(fontawesome::fa("download"), "Download Table"),
+#       onclick = "Reactable.downloadDataCSV('access-metrics-prov', 'Metric Overview by Provider')"
+#     ),
 
 # htmltools::browsable(
 #   tagList(
@@ -4274,8 +4274,8 @@ reactable(
   ) # Close Columns
 
   ) # Close Reactable
-) # Close Taglist
-) # Close htmltools
+# ) # Close Taglist
+# ) # Close htmltools
 
 ```
 <br/>
