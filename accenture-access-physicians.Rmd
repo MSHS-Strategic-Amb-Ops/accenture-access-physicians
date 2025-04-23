@@ -2669,12 +2669,12 @@ ________________________________________________________________________________
 ```{r By Department Output, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-# htmltools::browsable(
-#   tagList(
-#     tags$button(
-#       tagList(fontawesome::fa("download"), "Download Table"),
-#       onclick = "Reactable.downloadDataCSV('new-pt-waitTime', 'New Patient Wait Time')"
-#     ),
+htmltools::browsable(
+  tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download Table"),
+      onclick = "Reactable.downloadDataCSV('access-metrics', 'Metric Overview by Department')"
+    ),
 
 # htmltools::browsable(
 #   tagList(
@@ -3460,8 +3460,8 @@ reactable(
   ) # Close Columns
 
   ) # Close Reactable
-# ) # Close Taglist
-# ) # Close htmltools
+) # Close Taglist
+) # Close htmltools
 
 ```
 <br/>
@@ -3474,12 +3474,12 @@ reactable(
 ```{r By Provider Output, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-# htmltools::browsable(
-#   tagList(
-#     tags$button(
-#       tagList(fontawesome::fa("download"), "Download Table"),
-#       onclick = "Reactable.downloadDataCSV('new-pt-waitTime', 'New Patient Wait Time')"
-#     ),
+htmltools::browsable(
+  tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download Table"),
+      onclick = "Reactable.downloadDataCSV('access-metrics-prov', 'Metric Overview by Provider')"
+    ),
 
 # htmltools::browsable(
 #   tagList(
@@ -4274,8 +4274,8 @@ reactable(
   ) # Close Columns
 
   ) # Close Reactable
-# ) # Close Taglist
-# ) # Close htmltools
+) # Close Taglist
+) # Close htmltools
 
 ```
 <br/>
