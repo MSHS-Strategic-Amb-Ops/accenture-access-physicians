@@ -2681,7 +2681,7 @@ htmltools::browsable(
     div(tags$label("Summary by", `for` = "access-metrics-dept")),
     tags$select(
       id = "access-metrics-dept",
-      onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])",
+      onchange = "Reactable.setGroupBy('access-metrics-dept', this.value ? [this.value] : [])",
       tags$option("None", value = ""),
       lapply(c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty"), tags$option)
     ),
