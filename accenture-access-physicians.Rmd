@@ -2665,16 +2665,821 @@ ________________________________________________________________________________
 <!-- <p style="font-size:10pt; font-style:italic">*Estimated Revenue Impact is calculated based on (2025 - 2024 Provider Utilization) X (2025 Available Hours) X (1 Hour per Visit) X ($110 per Visit)<p/><br/> -->
 <!-- <br/> -->
 
-<!-- ## Metrics by Department -->
-<!-- ```{r By Department Output, echo = FALSE, warning = FALSE, message = FALSE} -->
+## Metrics by Department
+```{r By Department Output, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-<!-- htmltools::browsable( -->
-<!--   tagList( -->
-<!--     tags$button( -->
-<!--       tagList(fontawesome::fa("download"), "Download Table"), -->
-<!--       onclick = "Reactable.downloadDataCSV('access-metrics', 'Metric Overview by Department')" -->
-<!--     ), -->
+htmltools::browsable(
+  tagList(
+    tags$button(
+      tagList(fontawesome::fa("download"), "Download Table"),
+      onclick = "Reactable.downloadDataCSV('access-metrics', 'Metric Overview by Department')"
+    ),
+
+# htmltools::browsable(
+#   tagList(
+#     div(tags$label("Summary by", `for` = "access-metrics")),
+#     tags$select(
+#       id = "new-pt-waitTime",
+#       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])",
+#       tags$option("None", value = ""),
+#       lapply(c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty"), tags$option)
+#     ),
+#
+#     tags$hr("aria-hidden" = "true"),
+#
+reactable(
+  department_merged,
+  elementId = "access-metrics",
+  # elementId = "referral-vol-download-table",
+  style = list(fontFamily = 'Calibri',
+                 fontSize = '14px'),
+    defaultColDef = colDef(align = "left",
+                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
+                           headerClass = "bar-sort-header"),
+  # RowStyle = function(index) {
+  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
+  #             list(`border-top` = "2px solid rgb(184,184,184)",
+  #                  fontWeight = "Bold")
+  #           }
+  #         },
+    highlight = TRUE,
+    filterable = TRUE,
+    pagination = FALSE,
+    # height = 800,
+    wrap = TRUE,
+  searchable = TRUE,
+
+  groupBy = c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty", "DEPARTMENT_NAME"),
+
+  columnGroups = list(
+    colGroup(name = "", columns = c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty", "DEPARTMENT_NAME"),
+             headerStyle = list(color = "black", fontSize = "15px"),
+             sticky = "left"),
+    colGroup(name = paste0("Template Utilization (Physicians Only)"),
+             columns = c("avail_hours", "sched_util", "prov_util"),
+             headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("No Show"),
+             columns = c("perc_noShowPlus"),
+             headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("New Patient Access"),
+             columns = c("perc_new_lead_14days", "perc_new_los"),
+             headerStyle = list(background = "#9E1A6D", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("Referrals + Ticket Scheduling"),
+             columns = c("total_referrals", "total_scheduled", "perc_conversion", "perc_completion",
+                         "perc_tkt_sent", "perc_tkt_sent_automated",
+                         "perc_conversion_None", "perc_conversion_Automated", "perc_conversion_Scheduler", "perc_conversion_Both"),
+             headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("Digital Scheduling"),
+             columns = c("perc_avail_online", "perc_sched_online"),
+             headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("Payer Mix: Volume"),
+             columns = c("perc_mcr", "perc_mcd", "perc_commercial", "perc_self", "perc_other", "perc_no_coverage"),
+             headerStyle = list(background = "#7030a0", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("Payer Mix: Established Patient Access"),
+             columns = c("perc_est_lead_14days_mcr", "perc_est_lead_14days_mcd", "perc_est_lead_14days_commercial"),
+             headerStyle = list(background = "#ffcc00", color = "white", fontSize = "15px")),
+    colGroup(name = paste0("Payer Mix: New Patient Access"),
+             columns = c("perc_new_lead_14days_mcr", "perc_new_lead_14days_mcd", "perc_new_lead_14days_commercial"),
+             headerStyle = list(background = "#cca300", color = "white", fontSize = "15px"))
+    ),
+
+  columns = list(
+
+    Year = colDef(
+      maxWidth = 100),
+
+    `Year-Month` = colDef(
+      maxWidth = 220),
+
+    SITE = colDef(
+      # footer = "Total",
+      name = "Site",
+      maxWidth = 150),
+
+    `Specialty Type` = colDef(
+      name = "Specialty Type*",
+      maxWidth = 150),
+
+    Specialty = colDef(
+      maxWidth = 230),
+
+    DEPARTMENT_NAME = colDef(
+      name = "Department",
+      maxWidth = 230),
+
+    avail_hours = colDef(
+      name = "Available Hrs",
+      aggregate = "sum",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      format = colFormat(separators = TRUE, digits = 0)),
+
+    sched_util = colDef(
+      name = "Schedule Utilization",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalsched_hours = 0
+        let totalavail_hours = 0
+        rows.forEach(function(row) {
+          totalsched_hours+= row['sched_hours']
+          totalavail_hours += row['avail_hours']
+        })
+        return (totalsched_hours) / (totalavail_hours) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 0)
+    ),
+
+    prov_util = colDef(
+      name = "Provider Utilization",
+      maxWidth = 100,
+      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalavail_hours = 0
+        let totalarrived_hours = 0
+        rows.forEach(function(row) {
+          totalavail_hours += row['avail_hours']
+          totalarrived_hours += row['arrived_hours']
+        })
+        return (totalarrived_hours) / (totalavail_hours) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 0)
+    ),
+
+    perc_noShowPlus = colDef(
+      name = "No Show Plus Rate",
+      maxWidth = 100,
+      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalArrived = 0
+        let totalNo_Show = 0
+        let totalSameDay_Canceled = 0
+        rows.forEach(function(row) {
+          totalArrived += row['Arrived']
+          totalNo_Show += row['No_Show']
+          totalSameDay_Canceled += row['SameDay_Canceled']
+        })
+        return (totalNo_Show + totalSameDay_Canceled) / (totalArrived + totalNo_Show + totalSameDay_Canceled) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['perc_noShowPlus']
+        if (value >= 0.12) {
+          var color = '#e00000'
+        } else if (value < 0.12) {
+          var color = '#008000'
+        } else {
+          var color = '#000000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_new_lead_14days = colDef(
+      name = "% New Scheduled within 14 Days",
+      maxWidth = 100,
+      headerStyle = list(background = "#9E1A6D", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalNEW_lead_14days = 0
+        let totalNEW_appts_scheduled = 0
+        rows.forEach(function(row) {
+          totalNEW_lead_14days += row['NEW_lead_14days']
+          totalNEW_appts_scheduled += row['NEW_appts_scheduled']
+        })
+        return (totalNEW_lead_14days) / (totalNEW_appts_scheduled) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_new_los = colDef(
+      name = "New Patient Ratio*",
+      maxWidth = 100,
+      headerStyle = list(background = "#9E1A6D", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      # Calculate the aggregate conversion rate as `(total-pending) / total`
+      aggregate = JS("function(values, rows) {
+        let totalNEW_LOS = 0
+        let totalESTABLISHED_LOS = 0
+        rows.forEach(function(row) {
+          totalNEW_LOS += row['NEW_LOS']
+          totalESTABLISHED_LOS += row['ESTABLISHED_LOS']
+        })
+        return (totalNEW_LOS) / (totalNEW_LOS + totalESTABLISHED_LOS) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    total_referrals = colDef(
+      name = "Total Referrals",
+      aggregate = "sum",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      format = colFormat(separators = TRUE, digits = 0)),
+
+    total_scheduled = colDef(
+      name = "Total Referrals Scheduled",
+      aggregate = "sum",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      format = colFormat(separators = TRUE, digits = 0)),
+
+    perc_conversion = colDef(
+      name = "Conversion Rate",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totaltotal_referrals = 0
+        let totaltotal_scheduled = 0
+        rows.forEach(function(row) {
+          totaltotal_referrals += row['total_referrals']
+          totaltotal_scheduled += row['total_scheduled']
+        })
+        return (totaltotal_scheduled) / (totaltotal_referrals) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['perc_conversion']
+        if (value >= 0.60) {
+          var color = '#008000'
+        } else if (value < 0.60) {
+          var color = '#e00000'
+        } else {
+          var color = '#000000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_completion = colDef(
+      name = "Completion Rate",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totaltotal_referrals = 0
+        let totaltotal_completed = 0
+        rows.forEach(function(row) {
+          totaltotal_referrals += row['total_referrals']
+          totaltotal_completed += row['total_completed']
+        })
+        return (totaltotal_completed) / (totaltotal_referrals) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_tkt_sent = colDef(
+      name = "% Tickets Sent",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totaltotal_referrals = 0
+        let totaltotal_tkt_sent = 0
+        rows.forEach(function(row) {
+          totaltotal_referrals += row['total_referrals']
+          totaltotal_tkt_sent += row['total_tkt_sent']
+        })
+        return (totaltotal_tkt_sent) / (totaltotal_referrals) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_tkt_sent_automated = colDef(
+      name = "% Automated Tickets Sent",
+      maxWidth = 100,
+      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totaltotal_referrals = 0
+        let totaltotal_tkt_sent_automated = 0
+        rows.forEach(function(row) {
+          totaltotal_referrals += row['total_referrals']
+          totaltotal_tkt_sent_automated += row['total_tkt_sent_automated']
+        })
+        return (totaltotal_tkt_sent_automated) / (totaltotal_referrals) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    # perc_tkt_sent_scheduler = colDef(
+    #   name = "% Scheduler Tickets Sent",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   aggregate = JS("function(values, rows) {
+    #     let totaltotal_referrals = 0
+    #     let totaltotal_tkt_sent_scheduler = 0
+    #     rows.forEach(function(row) {
+    #       totaltotal_referrals += row['total_referrals']
+    #       totaltotal_tkt_sent_scheduler += row['total_tkt_sent_scheduler']
+    #     })
+    #     return (totaltotal_tkt_sent_scheduler) / (totaltotal_referrals)
+    #   }"),
+    #   format = colFormat(percent = TRUE, digits = 1)
+    # ),
+
+    # perc_tkt_sent_both = colDef(
+    #   name = "% Both Tickets Sent",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   aggregate = JS("function(values, rows) {
+    #     let totaltotal_referrals = 0
+    #     let totaltotal_tkt_sent_both = 0
+    #     rows.forEach(function(row) {
+    #       totaltotal_referrals += row['total_referrals']
+    #       totaltotal_tkt_sent_both += row['total_tkt_sent_both']
+    #     })
+    #     return (totaltotal_tkt_sent_both) / (totaltotal_referrals)
+    #   }"),
+    #   format = colFormat(percent = TRUE, digits = 1)
+    # ),
+
+    perc_conversion_None = colDef(
+      name = "Conversion Rate - No Tickets",
+      maxWidth = 100,
+      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalscheduled_None = 0
+        let totalnon_converted_None = 0
+        rows.forEach(function(row) {
+          totalscheduled_None += row['scheduled_None']
+          totalnon_converted_None += row['non_converted_None']
+        })
+        return (totalscheduled_None) / (totalscheduled_None + totalnon_converted_None) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_conversion_Automated = colDef(
+      name = "Conversion Rate - Automated Tickets",
+      maxWidth = 100,
+      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalscheduled_Automated = 0
+        let totalnon_converted_Automated = 0
+        rows.forEach(function(row) {
+          totalscheduled_Automated += row['scheduled_Automated']
+          totalnon_converted_Automated += row['non_converted_Automated']
+        })
+        return (totalscheduled_Automated) / (totalscheduled_Automated + totalnon_converted_Automated) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_conversion_Scheduler = colDef(
+      name = "Conversion Rate - Scheduler Tickets",
+      maxWidth = 100,
+      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalscheduled_Scheduler = 0
+        let totalnon_converted_Scheduler = 0
+        rows.forEach(function(row) {
+          totalscheduled_Scheduler += row['scheduled_Scheduler']
+          totalnon_converted_Scheduler += row['non_converted_Scheduler']
+        })
+        return (totalscheduled_Scheduler) / (totalscheduled_Scheduler + totalnon_converted_Scheduler) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_conversion_Both = colDef(
+      name = "Conversion Rate - Both Tickets",
+      maxWidth = 100,
+      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalscheduled_Both = 0
+        let totalnon_converted_Both = 0
+        rows.forEach(function(row) {
+          totalscheduled_Both += row['scheduled_Both']
+          totalnon_converted_Both += row['non_converted_Both']
+        })
+        return (totalscheduled_Both) / (totalscheduled_Both + totalnon_converted_Both) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_avail_online = colDef(
+      name = "% Appts Available Online",
+      maxWidth = 100,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalavail_N_sched_N = 0
+        let totalavail_Y_sched_N = 0
+        let totalavail_Y_sched_Y = 0
+        rows.forEach(function(row) {
+          totalavail_N_sched_N += row['avail_N_sched_N']
+          totalavail_Y_sched_N += row['avail_Y_sched_N']
+          totalavail_Y_sched_Y += row['avail_Y_sched_Y']
+        })
+        return (totalavail_Y_sched_N + totalavail_Y_sched_Y) / (totalavail_N_sched_N + totalavail_Y_sched_N + totalavail_Y_sched_Y) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['perc_avail_online']
+        if (value >= 0.35) {
+          var color = '#008000'
+        } else if (value < 0.35) {
+          var color = '#e00000'
+        } else {
+          var color = '#000000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    # perc_sched_online = colDef(
+    #   name = "% Online Available Appts Scheduled Online",
+    #   maxWidth = 100,
+    #   headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+    #   aggregate = JS("function(values, rows) {
+    #     let totalavail_Y_sched_N = 0
+    #     let totalavail_Y_sched_Y = 0
+    #     rows.forEach(function(row) {
+    #       totalavail_Y_sched_N += row['avail_Y_sched_N']
+    #       totalavail_Y_sched_Y += row['avail_Y_sched_Y']
+    #     })
+    #     return (totalavail_Y_sched_Y) / (totalavail_Y_sched_N + totalavail_Y_sched_Y) || '-'
+    #   }"),
+    #   format = colFormat(percent = TRUE, digits = 1)
+    # ),
+
+    perc_sched_online = colDef(
+      name = "% Online Available Appts Scheduled Online",
+      maxWidth = 100,
+      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalavail_N_sched_N = 0
+        let totalavail_Y_sched_N = 0
+        let totalavail_Y_sched_Y = 0
+        rows.forEach(function(row) {
+          totalavail_N_sched_N += row['avail_N_sched_N']
+          totalavail_Y_sched_N += row['avail_Y_sched_N']
+          totalavail_Y_sched_Y += row['avail_Y_sched_Y']
+        })
+        return (totalavail_Y_sched_Y) / (totalavail_N_sched_N + totalavail_Y_sched_N + totalavail_Y_sched_Y) || '-'
+      }"),
+      style = JS("function(rowInfo) {
+        var value = rowInfo.row['perc_sched_online']
+        if (value >= 0.13) {
+          var color = '#008000'
+        } else if (value < 0.13 ) {
+          var color = '#e00000'
+        } else {
+          var color = '#000000'
+        }
+        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_mcr = colDef(
+      name = "% Medicare/ Medicare HMO",
+      maxWidth = 100,
+      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMEDICARE_ESTABLISHED_LOS = 0
+        let totalMEDICARE_NEW_LOS = 0
+        let totalMEDICARE_HMO_ESTABLISHED_LOS = 0
+        let totalMEDICARE_HMO_NEW_LOS = 0
+        let totalArrived = 0
+        rows.forEach(function(row) {
+          totalMEDICARE_ESTABLISHED_LOS += row['MEDICARE_ESTABLISHED_LOS']
+          totalMEDICARE_NEW_LOS += row['MEDICARE_NEW_LOS']
+          totalMEDICARE_HMO_ESTABLISHED_LOS += row['MEDICARE_HMO_ESTABLISHED_LOS'],
+          totalMEDICARE_HMO_NEW_LOS += row['MEDICARE_HMO_NEW_LOS'],
+          totalArrived += row['Arrived']
+        })
+        return (totalMEDICARE_ESTABLISHED_LOS + totalMEDICARE_NEW_LOS + totalMEDICARE_HMO_ESTABLISHED_LOS + totalMEDICARE_HMO_NEW_LOS) / (totalArrived) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_mcd = colDef(
+      name = "% Medicaid/ Medicaid HMO",
+      maxWidth = 100,
+      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMEDICAID_ESTABLISHED_LOS = 0
+        let totalMEDICAID_NEW_LOS = 0
+        let totalMEDICAID_HMO_ESTABLISHED_LOS = 0
+        let totalMEDICAID_HMO_NEW_LOS = 0
+        let totalArrived = 0
+        rows.forEach(function(row) {
+          totalMEDICAID_ESTABLISHED_LOS += row['MEDICAID_ESTABLISHED_LOS']
+          totalMEDICAID_NEW_LOS += row['MEDICAID_NEW_LOS']
+          totalMEDICAID_HMO_ESTABLISHED_LOS += row['MEDICAID_HMO_ESTABLISHED_LOS'],
+          totalMEDICAID_HMO_NEW_LOS += row['MEDICAID_HMO_NEW_LOS'],
+          totalArrived += row['Arrived']
+        })
+        return (totalMEDICAID_ESTABLISHED_LOS + totalMEDICAID_NEW_LOS + totalMEDICAID_HMO_ESTABLISHED_LOS + totalMEDICAID_HMO_NEW_LOS) / (totalArrived) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_commercial = colDef(
+      name = "% Commercial/ Managed Care",
+      maxWidth = 100,
+      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_LOS = 0
+        let totalCOMMERCIAL_MANAGED_CARE_NEW_LOS = 0
+        let totalArrived = 0
+        rows.forEach(function(row) {
+          totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_LOS += row['COMMERCIAL_MANAGED_CARE_ESTABLISHED_LOS']
+          totalCOMMERCIAL_MANAGED_CARE_NEW_LOS += row['COMMERCIAL_MANAGED_CARE_NEW_LOS']
+          totalArrived += row['Arrived']
+        })
+        return (totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_LOS + totalCOMMERCIAL_MANAGED_CARE_NEW_LOS) / (totalArrived) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_self = colDef(
+      name = "% Self-Pay",
+      maxWidth = 100,
+      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalSELF_PAY_ESTABLISHED_LOS = 0
+        let totalSELF_PAY_NEW_LOS = 0
+        let totalArrived = 0
+        rows.forEach(function(row) {
+          totalSELF_PAY_ESTABLISHED_LOS += row['SELF_PAY_ESTABLISHED_LOS']
+          totalSELF_PAY_NEW_LOS += row['SELF_PAY_NEW_LOS']
+          totalArrived += row['Arrived']
+        })
+        return (totalSELF_PAY_ESTABLISHED_LOS + totalSELF_PAY_NEW_LOS) / (totalArrived) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_other = colDef(
+      name = "% Other",
+      maxWidth = 100,
+      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalOTHER_ESTABLISHED_LOS = 0
+        let totalOTHER_NEW_LOS = 0
+        let totalArrived = 0
+        rows.forEach(function(row) {
+          totalOTHER_ESTABLISHED_LOS += row['OTHER_ESTABLISHED_LOS']
+          totalOTHER_NEW_LOS += row['OTHER_NEW_LOS']
+          totalArrived += row['Arrived']
+        })
+        return (totalOTHER_ESTABLISHED_LOS + totalOTHER_NEW_LOS) / (totalArrived) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_no_coverage = colDef(
+      name = "% No Coverage Assigned",
+      maxWidth = 100,
+      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalNO_COVERAGE_ASSIGNED_ESTABLISHED_LOS = 0
+        let totalNO_COVERAGE_ASSIGNED_NEW_LOS = 0
+        let totalArrived = 0
+        rows.forEach(function(row) {
+          totalNO_COVERAGE_ASSIGNED_ESTABLISHED_LOS += row['NO_COVERAGE_ASSIGNED_ESTABLISHED_LOS']
+          totalNO_COVERAGE_ASSIGNED_NEW_LOS += row['NO_COVERAGE_ASSIGNED_NEW_LOS']
+          totalArrived += row['Arrived']
+        })
+        return (totalNO_COVERAGE_ASSIGNED_ESTABLISHED_LOS + totalNO_COVERAGE_ASSIGNED_NEW_LOS) / (totalArrived) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_est_lead_14days_mcr = colDef(
+      name = "% Established Medicare Scheduled within 14 Days",
+      maxWidth = 100,
+      headerStyle = list(background = "#ffcc00", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMEDICARE_ESTABLISHED_lead_14days = 0
+        let totalMEDICARE_ESTABLISHED_lead_14days_more = 0
+        let totalMEDICARE_HMO_ESTABLISHED_lead_14days = 0
+        let totalMEDICARE_HMO_ESTABLISHED_lead_14days_more = 0
+        rows.forEach(function(row) {
+          totalMEDICARE_ESTABLISHED_lead_14days += row['MEDICARE_ESTABLISHED_lead_14days']
+          totalMEDICARE_ESTABLISHED_lead_14days_more += row['MEDICARE_ESTABLISHED_lead_14days_more']
+          totalMEDICARE_HMO_ESTABLISHED_lead_14days += row['MEDICARE_HMO_ESTABLISHED_lead_14days']
+          totalMEDICARE_HMO_ESTABLISHED_lead_14days_more += row['MEDICARE_HMO_ESTABLISHED_lead_14days_more']
+        })
+        return (totalMEDICARE_ESTABLISHED_lead_14days + totalMEDICARE_HMO_ESTABLISHED_lead_14days) / (totalMEDICARE_ESTABLISHED_lead_14days + totalMEDICARE_ESTABLISHED_lead_14days_more + totalMEDICARE_HMO_ESTABLISHED_lead_14days + totalMEDICARE_HMO_ESTABLISHED_lead_14days_more) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_est_lead_14days_mcd = colDef(
+      name = "% Established Medicaid Scheduled within 14 Days",
+      maxWidth = 100,
+      headerStyle = list(background = "#ffcc00", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMEDICAID_ESTABLISHED_lead_14days = 0
+        let totalMEDICAID_ESTABLISHED_lead_14days_more = 0
+        let totalMEDICAID_HMO_ESTABLISHED_lead_14days = 0
+        let totalMEDICAID_HMO_ESTABLISHED_lead_14days_more = 0
+        rows.forEach(function(row) {
+          totalMEDICAID_ESTABLISHED_lead_14days += row['MEDICAID_ESTABLISHED_lead_14days']
+          totalMEDICAID_ESTABLISHED_lead_14days_more += row['MEDICAID_ESTABLISHED_lead_14days_more']
+          totalMEDICAID_HMO_ESTABLISHED_lead_14days += row['MEDICAID_HMO_ESTABLISHED_lead_14days']
+          totalMEDICAID_HMO_ESTABLISHED_lead_14days_more += row['MEDICAID_HMO_ESTABLISHED_lead_14days_more']
+        })
+        return (totalMEDICAID_ESTABLISHED_lead_14days + totalMEDICAID_HMO_ESTABLISHED_lead_14days) / (totalMEDICAID_ESTABLISHED_lead_14days + totalMEDICAID_ESTABLISHED_lead_14days_more + totalMEDICAID_HMO_ESTABLISHED_lead_14days + totalMEDICAID_HMO_ESTABLISHED_lead_14days_more) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_est_lead_14days_commercial = colDef(
+      name = "% Established Commercial Scheduled within 14 Days",
+      maxWidth = 100,
+      headerStyle = list(background = "#ffcc00", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days = 0
+        let totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days_more = 0
+        rows.forEach(function(row) {
+          totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days += row['COMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days']
+          totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days_more += row['COMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days_more']
+        })
+        return (totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days) / (totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days + totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days_more) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_new_lead_14days_mcr = colDef(
+      name = "% New Medicare Scheduled within 14 Days",
+      maxWidth = 100,
+      headerStyle = list(background = "#cca300", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMEDICARE_NEW_lead_14days = 0
+        let totalMEDICARE_NEW_lead_14days_more = 0
+        let totalMEDICARE_HMO_NEW_lead_14days = 0
+        let totalMEDICARE_HMO_NEW_lead_14days_more = 0
+        rows.forEach(function(row) {
+          totalMEDICARE_NEW_lead_14days += row['MEDICARE_NEW_lead_14days']
+          totalMEDICARE_NEW_lead_14days_more += row['MEDICARE_NEW_lead_14days_more']
+          totalMEDICARE_HMO_NEW_lead_14days += row['MEDICARE_HMO_NEW_lead_14days']
+          totalMEDICARE_HMO_NEW_lead_14days_more += row['MEDICARE_HMO_NEW_lead_14days_more']
+        })
+        return (totalMEDICARE_NEW_lead_14days + totalMEDICARE_HMO_NEW_lead_14days) / (totalMEDICARE_NEW_lead_14days + totalMEDICARE_NEW_lead_14days_more + totalMEDICARE_HMO_NEW_lead_14days + totalMEDICARE_HMO_NEW_lead_14days_more) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_new_lead_14days_mcd = colDef(
+      name = "% New Medicaid Scheduled within 14 Days",
+      maxWidth = 100,
+      headerStyle = list(background = "#cca300", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalMEDICAID_NEW_lead_14days = 0
+        let totalMEDICAID_NEW_lead_14days_more = 0
+        let totalMEDICAID_HMO_NEW_lead_14days = 0
+        let totalMEDICAID_HMO_NEW_lead_14days_more = 0
+        rows.forEach(function(row) {
+          totalMEDICAID_NEW_lead_14days += row['MEDICAID_NEW_lead_14days']
+          totalMEDICAID_NEW_lead_14days_more += row['MEDICAID_NEW_lead_14days_more']
+          totalMEDICAID_HMO_NEW_lead_14days += row['MEDICAID_HMO_NEW_lead_14days']
+          totalMEDICAID_HMO_NEW_lead_14days_more += row['MEDICAID_HMO_NEW_lead_14days_more']
+        })
+        return (totalMEDICAID_NEW_lead_14days + totalMEDICAID_HMO_NEW_lead_14days) / (totalMEDICAID_NEW_lead_14days + totalMEDICAID_NEW_lead_14days_more + totalMEDICAID_HMO_NEW_lead_14days + totalMEDICAID_HMO_NEW_lead_14days_more) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    perc_new_lead_14days_commercial = colDef(
+      name = "% New Commercial Scheduled within 14 Days",
+      maxWidth = 100,
+      headerStyle = list(background = "#cca300", color = "white", fontWeight = "Bold", fontSize = "14px"),
+      aggregate = JS("function(values, rows) {
+        let totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days = 0
+        let totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days_more = 0
+        rows.forEach(function(row) {
+          totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days += row['COMMERCIAL_MANAGED_CARE_NEW_lead_14days']
+          totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days_more += row['COMMERCIAL_MANAGED_CARE_NEW_lead_14days_more']
+        })
+        return (totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days) / (totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days + totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days_more) || '-'
+      }"),
+      format = colFormat(percent = TRUE, digits = 1)
+    ),
+
+    Month = colDef(show =F),
+    DEPARTMENT_ID = colDef(show =F),
+    sched_hours = colDef(show =F),
+    arrived_hours = colDef(show =F),
+    sched_hours = colDef(show =F),
+    arrived_hours = colDef(show =F),
+    Arrived = colDef(show =F),
+    SameDay_Canceled = colDef(show =F),
+    No_Show = colDef(show =F),
+    perc_noShow = colDef(show =F),
+    perc_SameDayCanceled = colDef(show =F),
+    NEW_LOS = colDef(show =F),
+    appts_arrived = colDef(show =F),
+    ESTABLISHED_LOS = colDef(show =F),
+    total_referrals = colDef(show =F),
+    # total_scheduled = colDef(show =F),
+    total_completed = colDef(show =F),
+    total_tkt_sent_automated = colDef(show =F),
+    total_tkt_sent_scheduler = colDef(show =F),
+    total_tkt_sent_both = colDef(show =F),
+    total_tkt_sent = colDef(show =F),
+    non_converted_None = colDef(show =F),
+    non_converted_Automated = colDef(show =F),
+    non_converted_Scheduler = colDef(show =F),
+    non_converted_Both = colDef(show =F),
+    scheduled_None = colDef(show =F),
+    scheduled_Automated = colDef(show =F),
+    scheduled_Scheduler = colDef(show =F),
+    scheduled_Both = colDef(show =F),
+    perc_tkt_sent_scheduler = colDef(show =F),
+    perc_tkt_sent_both = colDef(show =F),
+    completed_None = colDef(show =F),
+    completed_Automated = colDef(show =F),
+    completed_Scheduler = colDef(show =F),
+    completed_Both = colDef(show =F),
+    ESTABLISHED = colDef(show =F),
+    NEW = colDef(show =F),
+    appts_scheduled = colDef(show =F),
+    perc_new = colDef(show =F),
+    NEW_lead_14days = colDef(show =F),
+    NEW_lead_14days_more = colDef(show =F),
+    NEW_appts_scheduled = colDef(show =F),
+    perc_new_lead_14days = colDef(show =F),
+    avail_N_sched_N = colDef(show =F),
+    avail_Y_sched_N = colDef(show =F),
+    avail_Y_sched_Y = colDef(show =F),
+
+    MEDICARE_HMO_ESTABLISHED_LOS = colDef(show =F),
+    COMMERCIAL_MANAGED_CARE_NEW_LOS = colDef(show =F),
+    MEDICARE_ESTABLISHED_LOS = colDef(show =F),
+    OTHER_ESTABLISHED_LOS = colDef(show =F),
+    MEDICARE_NEW_LOS = colDef(show =F),
+    MEDICAID_HMO_ESTABLISHED_LOS = colDef(show =F),
+    COMMERCIAL_MANAGED_CARE_ESTABLISHED_LOS = colDef(show =F),
+    MEDICAID_ESTABLISHED_LOS = colDef(show =F),
+    MEDICARE_HMO_NEW_LOS = colDef(show =F),
+    SELF_PAY_ESTABLISHED_LOS = colDef(show =F),
+    SELF_PAY_NEW_LOS = colDef(show =F),
+    MEDICAID_HMO_NEW_LOS = colDef(show =F),
+    OTHER_NEW_LOS = colDef(show =F),
+    MEDICAID_NEW_LOS = colDef(show =F),
+    NO_COVERAGE_ASSIGNED_ESTABLISHED_LOS = colDef(show =F),
+    NO_COVERAGE_ASSIGNED_NEW_LOS = colDef(show =F),
+    MEDICAID_ESTABLISHED_lead_14days = colDef(show =F),
+    MEDICARE_HMO_ESTABLISHED_lead_14days_more = colDef(show =F),
+    MEDICARE_NEW_lead_14days_more = colDef(show =F),
+    MEDICAID_NEW_lead_14days_more = colDef(show =F),
+    MEDICARE_ESTABLISHED_lead_14days = colDef(show =F),
+    MEDICAID_HMO_ESTABLISHED_lead_14days_more = colDef(show =F),
+    COMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days_more = colDef(show =F),
+    MEDICAID_HMO_ESTABLISHED_lead_14days = colDef(show =F),
+    COMMERCIAL_MANAGED_CARE_NEW_lead_14days = colDef(show =F),
+    MEDICAID_HMO_NEW_lead_14days_more = colDef(show =F),
+    COMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days = colDef(show =F),
+    SELF_PAY_NEW_lead_14days = colDef(show =F),
+    MEDICARE_NEW_lead_14days = colDef(show =F),
+    MEDICARE_ESTABLISHED_lead_14days_more = colDef(show =F),
+    SELF_PAY_ESTABLISHED_lead_14days = colDef(show =F),
+    MEDICARE_HMO_ESTABLISHED_lead_14days = colDef(show =F),
+    COMMERCIAL_MANAGED_CARE_NEW_lead_14days_more = colDef(show =F),
+    MEDICARE_HMO_NEW_lead_14days = colDef(show =F),
+    SELF_PAY_ESTABLISHED_lead_14days_more = colDef(show =F),
+    OTHER_ESTABLISHED_lead_14days_more = colDef(show =F),
+    MEDICAID_NEW_lead_14days = colDef(show =F),
+    SELF_PAY_NEW_lead_14days_more = colDef(show =F),
+    NO_COVERAGE_ASSIGNED_ESTABLISHED_lead_14days_more = colDef(show =F),
+    MEDICAID_ESTABLISHED_lead_14days_more = colDef(show =F),
+    MEDICARE_HMO_NEW_lead_14days_more = colDef(show =F),
+    MEDICAID_HMO_NEW_lead_14days = colDef(show =F),
+    NO_COVERAGE_ASSIGNED_NEW_lead_14days_more = colDef(show =F),
+    NO_COVERAGE_ASSIGNED_ESTABLISHED_lead_14days = colDef(show =F),
+    OTHER_ESTABLISHED_lead_14days = colDef(show =F),
+    NO_COVERAGE_ASSIGNED_NEW_lead_14days = colDef(show =F),
+    OTHER_NEW_lead_14days = colDef(show =F),
+    OTHER_NEW_lead_14days_more = colDef(show =F)
+
+
+  ) # Close Columns
+
+  ) # Close Reactable
+) # Close Taglist
+) # Close htmltools
+
+```
+<br/>
+<p style="font-size:10pt; font-style:italic">*New Patient is defined by level of service; New Patient Ratio is calculated based on (Total New Patients Arrived) / (Total Patients Arrived)<p/>
+<p style="font-size:10pt; font-style:italic">*Primary Care includes Adolescent Medicine, Community and Preventative Medicine, Internal Medicine, Family Medicine, Pediatrics, Geriatrics, Urgent Care<p/>
+
+
+
+<!-- ## Metrics by Provider -->
+<!-- ```{r By Provider Output, echo = FALSE, warning = FALSE, message = FALSE} -->
+
+
+<!-- # htmltools::browsable( -->
+<!-- #   tagList( -->
+<!-- #     tags$button( -->
+<!-- #       tagList(fontawesome::fa("download"), "Download Table"), -->
+<!-- #       onclick = "Reactable.downloadDataCSV('access-metrics-prov', 'Metric Overview by Provider')" -->
+<!-- #     ), -->
 
 <!-- # htmltools::browsable( -->
 <!-- #   tagList( -->
@@ -2689,8 +3494,8 @@ ________________________________________________________________________________
 <!-- #     tags$hr("aria-hidden" = "true"), -->
 <!-- #      -->
 <!-- reactable( -->
-<!--   department_merged, -->
-<!--   elementId = "access-metrics", -->
+<!--   provider_merged, -->
+<!--   elementId = "access-metrics-prov", -->
 <!--   # elementId = "referral-vol-download-table", -->
 <!--   style = list(fontFamily = 'Calibri', -->
 <!--                  fontSize = '14px'), -->
@@ -2710,10 +3515,10 @@ ________________________________________________________________________________
 <!--     wrap = TRUE, -->
 <!--   searchable = TRUE, -->
 
-<!--   groupBy = c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty", "DEPARTMENT_NAME"), -->
+<!--   groupBy = c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty", "DEPARTMENT_NAME", "PROV_TYPE", "PROV_NAME"), -->
 
 <!--   columnGroups = list( -->
-<!--     colGroup(name = "", columns = c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty", "DEPARTMENT_NAME"), -->
+<!--     colGroup(name = "", columns = c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty", "DEPARTMENT_NAME", "PROV_TYPE", "PROV_NAME"), -->
 <!--              headerStyle = list(color = "black", fontSize = "15px"), -->
 <!--              sticky = "left"), -->
 <!--     colGroup(name = paste0("Template Utilization (Physicians Only)"), -->
@@ -2766,6 +3571,14 @@ ________________________________________________________________________________
 
 <!--     DEPARTMENT_NAME = colDef( -->
 <!--       name = "Department", -->
+<!--       maxWidth = 230), -->
+
+<!--     PROV_TYPE = colDef( -->
+<!--       name = "Provider Type", -->
+<!--       maxWidth = 230), -->
+
+<!--     PROV_NAME = colDef( -->
+<!--       name = "ProvideR", -->
 <!--       maxWidth = 230), -->
 
 <!--     avail_hours = colDef( -->
@@ -3362,6 +4175,7 @@ ________________________________________________________________________________
 
 <!--     Month = colDef(show =F), -->
 <!--     DEPARTMENT_ID = colDef(show =F), -->
+<!--     PROV_ID = colDef(show =F), -->
 <!--     sched_hours = colDef(show =F), -->
 <!--     arrived_hours = colDef(show =F), -->
 <!--     sched_hours = colDef(show =F), -->
@@ -3460,8 +4274,8 @@ ________________________________________________________________________________
 <!--   ) # Close Columns -->
 
 <!--   ) # Close Reactable -->
-<!-- ) # Close Taglist -->
-<!-- ) # Close htmltools -->
+<!-- # ) # Close Taglist -->
+<!-- # ) # Close htmltools -->
 
 <!-- ``` -->
 <!-- <br/> -->
@@ -3470,819 +4284,5 @@ ________________________________________________________________________________
 
 
 
-## Metrics by Provider
-```{r By Provider Output, echo = FALSE, warning = FALSE, message = FALSE}
-
-
-# htmltools::browsable(
-#   tagList(
-#     tags$button(
-#       tagList(fontawesome::fa("download"), "Download Table"),
-#       onclick = "Reactable.downloadDataCSV('access-metrics-prov', 'Metric Overview by Provider')"
-#     ),
-
-# htmltools::browsable(
-#   tagList(
-#     div(tags$label("Summary by", `for` = "access-metrics")),
-#     tags$select(
-#       id = "new-pt-waitTime",
-#       onchange = "Reactable.setGroupBy('access-metrics', this.value ? [this.value] : [])",
-#       tags$option("None", value = ""),
-#       lapply(c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty"), tags$option)
-#     ),
-# 
-#     tags$hr("aria-hidden" = "true"),
-#     
-reactable(
-  provider_merged,
-  elementId = "access-metrics-prov",
-  # elementId = "referral-vol-download-table",
-  style = list(fontFamily = 'Calibri',
-                 fontSize = '14px'),
-    defaultColDef = colDef(align = "left",
-                           headerStyle = list(fontWeight = "Bold", fontSize = "14px"),
-                           headerClass = "bar-sort-header"),
-  # RowStyle = function(index) {
-  #           if (index %in% c(nrow(referral_vol_site_data_mshs))) {
-  #             list(`border-top` = "2px solid rgb(184,184,184)",
-  #                  fontWeight = "Bold")
-  #           }
-  #         },
-    highlight = TRUE,
-    filterable = TRUE,
-    pagination = FALSE,
-    # height = 800,
-    wrap = TRUE,
-  searchable = TRUE,
-
-  groupBy = c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty", "DEPARTMENT_NAME", "PROV_TYPE", "PROV_NAME"),
-
-  columnGroups = list(
-    colGroup(name = "", columns = c("Year", "Year-Month", "SITE", "Specialty Type", "Specialty", "DEPARTMENT_NAME", "PROV_TYPE", "PROV_NAME"),
-             headerStyle = list(color = "black", fontSize = "15px"),
-             sticky = "left"),
-    colGroup(name = paste0("Template Utilization (Physicians Only)"),
-             columns = c("avail_hours", "sched_util", "prov_util"),
-             headerStyle = list(background = "#212070", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("No Show"),
-             columns = c("perc_noShowPlus"),
-             headerStyle = list(background = "#d80b8c", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("New Patient Access"),
-             columns = c("perc_new_lead_14days", "perc_new_los"),
-             headerStyle = list(background = "#9E1A6D", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Referrals + Ticket Scheduling"),
-             columns = c("total_referrals", "total_scheduled", "perc_conversion", "perc_completion",
-                         "perc_tkt_sent", "perc_tkt_sent_automated", 
-                         "perc_conversion_None", "perc_conversion_Automated", "perc_conversion_Scheduler", "perc_conversion_Both"),
-             headerStyle = list(background = "#00aeef", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Digital Scheduling"),
-             columns = c("perc_avail_online", "perc_sched_online"),
-             headerStyle = list(background = "#7f7f7f", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Payer Mix: Volume"),
-             columns = c("perc_mcr", "perc_mcd", "perc_commercial", "perc_self", "perc_other", "perc_no_coverage"),
-             headerStyle = list(background = "#7030a0", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Payer Mix: Established Patient Access"),
-             columns = c("perc_est_lead_14days_mcr", "perc_est_lead_14days_mcd", "perc_est_lead_14days_commercial"),
-             headerStyle = list(background = "#ffcc00", color = "white", fontSize = "15px")),
-    colGroup(name = paste0("Payer Mix: New Patient Access"),
-             columns = c("perc_new_lead_14days_mcr", "perc_new_lead_14days_mcd", "perc_new_lead_14days_commercial"),
-             headerStyle = list(background = "#cca300", color = "white", fontSize = "15px"))
-    ),
-
-  columns = list(
-
-    Year = colDef(
-      maxWidth = 100),
-
-    `Year-Month` = colDef(
-      maxWidth = 220),
-
-    SITE = colDef(
-      # footer = "Total",
-      name = "Site",
-      maxWidth = 150),
-    
-    `Specialty Type` = colDef(
-      name = "Specialty Type*",
-      maxWidth = 150),
-
-    Specialty = colDef(
-      maxWidth = 230),
-
-    DEPARTMENT_NAME = colDef(
-      name = "Department",
-      maxWidth = 230),
-    
-    PROV_TYPE = colDef(
-      name = "Provider Type",
-      maxWidth = 230),
-    
-    PROV_NAME = colDef(
-      name = "ProvideR",
-      maxWidth = 230),
-
-    avail_hours = colDef(
-      name = "Available Hrs",
-      aggregate = "sum",
-      maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      format = colFormat(separators = TRUE, digits = 0)),
-
-    sched_util = colDef(
-      name = "Schedule Utilization",
-      maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = JS("function(values, rows) {
-        let totalsched_hours = 0
-        let totalavail_hours = 0
-        rows.forEach(function(row) {
-          totalsched_hours+= row['sched_hours']
-          totalavail_hours += row['avail_hours']
-        })
-        return (totalsched_hours) / (totalavail_hours) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 0)
-    ),
-
-    prov_util = colDef(
-      name = "Provider Utilization",
-      maxWidth = 100,
-      headerStyle = list(background = "#212070", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = JS("function(values, rows) {
-        let totalavail_hours = 0
-        let totalarrived_hours = 0
-        rows.forEach(function(row) {
-          totalavail_hours += row['avail_hours']
-          totalarrived_hours += row['arrived_hours']
-        })
-        return (totalarrived_hours) / (totalavail_hours) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 0)
-    ),
-
-    perc_noShowPlus = colDef(
-      name = "No Show Plus Rate",
-      maxWidth = 100,
-      headerStyle = list(background = "#d80b8c", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = JS("function(values, rows) {
-        let totalArrived = 0
-        let totalNo_Show = 0
-        let totalSameDay_Canceled = 0
-        rows.forEach(function(row) {
-          totalArrived += row['Arrived']
-          totalNo_Show += row['No_Show']
-          totalSameDay_Canceled += row['SameDay_Canceled']
-        })
-        return (totalNo_Show + totalSameDay_Canceled) / (totalArrived + totalNo_Show + totalSameDay_Canceled) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['perc_noShowPlus']
-        if (value >= 0.12) {
-          var color = '#e00000'
-        } else if (value < 0.12) {
-          var color = '#008000'
-        } else {
-          var color = '#000000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_new_lead_14days = colDef(
-      name = "% New Scheduled within 14 Days",
-      maxWidth = 100,
-      headerStyle = list(background = "#9E1A6D", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = JS("function(values, rows) {
-        let totalNEW_lead_14days = 0
-        let totalNEW_appts_scheduled = 0
-        rows.forEach(function(row) {
-          totalNEW_lead_14days += row['NEW_lead_14days']
-          totalNEW_appts_scheduled += row['NEW_appts_scheduled']
-        })
-        return (totalNEW_lead_14days) / (totalNEW_appts_scheduled) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_new_los = colDef(
-      name = "New Patient Ratio*",
-      maxWidth = 100,
-      headerStyle = list(background = "#9E1A6D", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      # Calculate the aggregate conversion rate as `(total-pending) / total`
-      aggregate = JS("function(values, rows) {
-        let totalNEW_LOS = 0
-        let totalESTABLISHED_LOS = 0
-        rows.forEach(function(row) {
-          totalNEW_LOS += row['NEW_LOS']
-          totalESTABLISHED_LOS += row['ESTABLISHED_LOS']
-        })
-        return (totalNEW_LOS) / (totalNEW_LOS + totalESTABLISHED_LOS) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    total_referrals = colDef(
-      name = "Total Referrals",
-      aggregate = "sum",
-      maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      format = colFormat(separators = TRUE, digits = 0)),
-    
-    total_scheduled = colDef(
-      name = "Total Referrals Scheduled",
-      aggregate = "sum",
-      maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      format = colFormat(separators = TRUE, digits = 0)),
-    
-    perc_conversion = colDef(
-      name = "Conversion Rate",
-      maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totaltotal_referrals = 0
-        let totaltotal_scheduled = 0
-        rows.forEach(function(row) {
-          totaltotal_referrals += row['total_referrals']
-          totaltotal_scheduled += row['total_scheduled']
-        })
-        return (totaltotal_scheduled) / (totaltotal_referrals) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['perc_conversion']
-        if (value >= 0.60) {
-          var color = '#008000'
-        } else if (value < 0.60) {
-          var color = '#e00000'
-        } else {
-          var color = '#000000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_completion = colDef(
-      name = "Completion Rate",
-      maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totaltotal_referrals = 0
-        let totaltotal_completed = 0
-        rows.forEach(function(row) {
-          totaltotal_referrals += row['total_referrals']
-          totaltotal_completed += row['total_completed']
-        })
-        return (totaltotal_completed) / (totaltotal_referrals) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_tkt_sent = colDef(
-      name = "% Tickets Sent",
-      maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totaltotal_referrals = 0
-        let totaltotal_tkt_sent = 0
-        rows.forEach(function(row) {
-          totaltotal_referrals += row['total_referrals']
-          totaltotal_tkt_sent += row['total_tkt_sent']
-        })
-        return (totaltotal_tkt_sent) / (totaltotal_referrals) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_tkt_sent_automated = colDef(
-      name = "% Automated Tickets Sent",
-      maxWidth = 100,
-      headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totaltotal_referrals = 0
-        let totaltotal_tkt_sent_automated = 0
-        rows.forEach(function(row) {
-          totaltotal_referrals += row['total_referrals']
-          totaltotal_tkt_sent_automated += row['total_tkt_sent_automated']
-        })
-        return (totaltotal_tkt_sent_automated) / (totaltotal_referrals) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    # perc_tkt_sent_scheduler = colDef(
-    #   name = "% Scheduler Tickets Sent",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   aggregate = JS("function(values, rows) {
-    #     let totaltotal_referrals = 0
-    #     let totaltotal_tkt_sent_scheduler = 0
-    #     rows.forEach(function(row) {
-    #       totaltotal_referrals += row['total_referrals']
-    #       totaltotal_tkt_sent_scheduler += row['total_tkt_sent_scheduler']
-    #     })
-    #     return (totaltotal_tkt_sent_scheduler) / (totaltotal_referrals)
-    #   }"),
-    #   format = colFormat(percent = TRUE, digits = 1)
-    # ),
-    
-    # perc_tkt_sent_both = colDef(
-    #   name = "% Both Tickets Sent",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#00aeef", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   aggregate = JS("function(values, rows) {
-    #     let totaltotal_referrals = 0
-    #     let totaltotal_tkt_sent_both = 0
-    #     rows.forEach(function(row) {
-    #       totaltotal_referrals += row['total_referrals']
-    #       totaltotal_tkt_sent_both += row['total_tkt_sent_both']
-    #     })
-    #     return (totaltotal_tkt_sent_both) / (totaltotal_referrals)
-    #   }"),
-    #   format = colFormat(percent = TRUE, digits = 1)
-    # ),
-    
-    perc_conversion_None = colDef(
-      name = "Conversion Rate - No Tickets",
-      maxWidth = 100,
-      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalscheduled_None = 0
-        let totalnon_converted_None = 0
-        rows.forEach(function(row) {
-          totalscheduled_None += row['scheduled_None']
-          totalnon_converted_None += row['non_converted_None']
-        })
-        return (totalscheduled_None) / (totalscheduled_None + totalnon_converted_None) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_conversion_Automated = colDef(
-      name = "Conversion Rate - Automated Tickets",
-      maxWidth = 100,
-      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalscheduled_Automated = 0
-        let totalnon_converted_Automated = 0
-        rows.forEach(function(row) {
-          totalscheduled_Automated += row['scheduled_Automated']
-          totalnon_converted_Automated += row['non_converted_Automated']
-        })
-        return (totalscheduled_Automated) / (totalscheduled_Automated + totalnon_converted_Automated) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_conversion_Scheduler = colDef(
-      name = "Conversion Rate - Scheduler Tickets",
-      maxWidth = 100,
-      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalscheduled_Scheduler = 0
-        let totalnon_converted_Scheduler = 0
-        rows.forEach(function(row) {
-          totalscheduled_Scheduler += row['scheduled_Scheduler']
-          totalnon_converted_Scheduler += row['non_converted_Scheduler']
-        })
-        return (totalscheduled_Scheduler) / (totalscheduled_Scheduler + totalnon_converted_Scheduler) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_conversion_Both = colDef(
-      name = "Conversion Rate - Both Tickets",
-      maxWidth = 100,
-      headerStyle = list(background = "#0082B3", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalscheduled_Both = 0
-        let totalnon_converted_Both = 0
-        rows.forEach(function(row) {
-          totalscheduled_Both += row['scheduled_Both']
-          totalnon_converted_Both += row['non_converted_Both']
-        })
-        return (totalscheduled_Both) / (totalscheduled_Both + totalnon_converted_Both) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_avail_online = colDef(
-      name = "% Appts Available Online",
-      maxWidth = 100,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalavail_N_sched_N = 0
-        let totalavail_Y_sched_N = 0
-        let totalavail_Y_sched_Y = 0
-        rows.forEach(function(row) {
-          totalavail_N_sched_N += row['avail_N_sched_N']
-          totalavail_Y_sched_N += row['avail_Y_sched_N']
-          totalavail_Y_sched_Y += row['avail_Y_sched_Y']
-        })
-        return (totalavail_Y_sched_N + totalavail_Y_sched_Y) / (totalavail_N_sched_N + totalavail_Y_sched_N + totalavail_Y_sched_Y) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['perc_avail_online']
-        if (value >= 0.35) {
-          var color = '#008000'
-        } else if (value < 0.35) {
-          var color = '#e00000'
-        } else {
-          var color = '#000000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    # perc_sched_online = colDef(
-    #   name = "% Online Available Appts Scheduled Online",
-    #   maxWidth = 100,
-    #   headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-    #   aggregate = JS("function(values, rows) {
-    #     let totalavail_Y_sched_N = 0
-    #     let totalavail_Y_sched_Y = 0
-    #     rows.forEach(function(row) {
-    #       totalavail_Y_sched_N += row['avail_Y_sched_N']
-    #       totalavail_Y_sched_Y += row['avail_Y_sched_Y']
-    #     })
-    #     return (totalavail_Y_sched_Y) / (totalavail_Y_sched_N + totalavail_Y_sched_Y) || '-'
-    #   }"),
-    #   format = colFormat(percent = TRUE, digits = 1)
-    # ),
-    
-    perc_sched_online = colDef(
-      name = "% Online Available Appts Scheduled Online",
-      maxWidth = 100,
-      headerStyle = list(background = "#7f7f7f", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalavail_N_sched_N = 0
-        let totalavail_Y_sched_N = 0
-        let totalavail_Y_sched_Y = 0
-        rows.forEach(function(row) {
-          totalavail_N_sched_N += row['avail_N_sched_N']
-          totalavail_Y_sched_N += row['avail_Y_sched_N']
-          totalavail_Y_sched_Y += row['avail_Y_sched_Y']
-        })
-        return (totalavail_Y_sched_Y) / (totalavail_N_sched_N + totalavail_Y_sched_N + totalavail_Y_sched_Y) || '-'
-      }"),
-      style = JS("function(rowInfo) {
-        var value = rowInfo.row['perc_sched_online']
-        if (value >= 0.13) {
-          var color = '#008000'
-        } else if (value < 0.13 ) {
-          var color = '#e00000'
-        } else {
-          var color = '#000000'
-        }
-        return { color: color, fontFamily: 'calibri', fontWeight: 'bold'}
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_mcr = colDef(
-      name = "% Medicare/ Medicare HMO",
-      maxWidth = 100,
-      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalMEDICARE_ESTABLISHED_LOS = 0
-        let totalMEDICARE_NEW_LOS = 0
-        let totalMEDICARE_HMO_ESTABLISHED_LOS = 0
-        let totalMEDICARE_HMO_NEW_LOS = 0
-        let totalArrived = 0
-        rows.forEach(function(row) {
-          totalMEDICARE_ESTABLISHED_LOS += row['MEDICARE_ESTABLISHED_LOS']
-          totalMEDICARE_NEW_LOS += row['MEDICARE_NEW_LOS']
-          totalMEDICARE_HMO_ESTABLISHED_LOS += row['MEDICARE_HMO_ESTABLISHED_LOS'],
-          totalMEDICARE_HMO_NEW_LOS += row['MEDICARE_HMO_NEW_LOS'],
-          totalArrived += row['Arrived']
-        })
-        return (totalMEDICARE_ESTABLISHED_LOS + totalMEDICARE_NEW_LOS + totalMEDICARE_HMO_ESTABLISHED_LOS + totalMEDICARE_HMO_NEW_LOS) / (totalArrived) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_mcd = colDef(
-      name = "% Medicaid/ Medicaid HMO",
-      maxWidth = 100,
-      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalMEDICAID_ESTABLISHED_LOS = 0
-        let totalMEDICAID_NEW_LOS = 0
-        let totalMEDICAID_HMO_ESTABLISHED_LOS = 0
-        let totalMEDICAID_HMO_NEW_LOS = 0
-        let totalArrived = 0
-        rows.forEach(function(row) {
-          totalMEDICAID_ESTABLISHED_LOS += row['MEDICAID_ESTABLISHED_LOS']
-          totalMEDICAID_NEW_LOS += row['MEDICAID_NEW_LOS']
-          totalMEDICAID_HMO_ESTABLISHED_LOS += row['MEDICAID_HMO_ESTABLISHED_LOS'],
-          totalMEDICAID_HMO_NEW_LOS += row['MEDICAID_HMO_NEW_LOS'],
-          totalArrived += row['Arrived']
-        })
-        return (totalMEDICAID_ESTABLISHED_LOS + totalMEDICAID_NEW_LOS + totalMEDICAID_HMO_ESTABLISHED_LOS + totalMEDICAID_HMO_NEW_LOS) / (totalArrived) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_commercial = colDef(
-      name = "% Commercial/ Managed Care",
-      maxWidth = 100,
-      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_LOS = 0
-        let totalCOMMERCIAL_MANAGED_CARE_NEW_LOS = 0
-        let totalArrived = 0
-        rows.forEach(function(row) {
-          totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_LOS += row['COMMERCIAL_MANAGED_CARE_ESTABLISHED_LOS']
-          totalCOMMERCIAL_MANAGED_CARE_NEW_LOS += row['COMMERCIAL_MANAGED_CARE_NEW_LOS']
-          totalArrived += row['Arrived']
-        })
-        return (totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_LOS + totalCOMMERCIAL_MANAGED_CARE_NEW_LOS) / (totalArrived) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_self = colDef(
-      name = "% Self-Pay",
-      maxWidth = 100,
-      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalSELF_PAY_ESTABLISHED_LOS = 0
-        let totalSELF_PAY_NEW_LOS = 0
-        let totalArrived = 0
-        rows.forEach(function(row) {
-          totalSELF_PAY_ESTABLISHED_LOS += row['SELF_PAY_ESTABLISHED_LOS']
-          totalSELF_PAY_NEW_LOS += row['SELF_PAY_NEW_LOS']
-          totalArrived += row['Arrived']
-        })
-        return (totalSELF_PAY_ESTABLISHED_LOS + totalSELF_PAY_NEW_LOS) / (totalArrived) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_other = colDef(
-      name = "% Other",
-      maxWidth = 100,
-      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalOTHER_ESTABLISHED_LOS = 0
-        let totalOTHER_NEW_LOS = 0
-        let totalArrived = 0
-        rows.forEach(function(row) {
-          totalOTHER_ESTABLISHED_LOS += row['OTHER_ESTABLISHED_LOS']
-          totalOTHER_NEW_LOS += row['OTHER_NEW_LOS']
-          totalArrived += row['Arrived']
-        })
-        return (totalOTHER_ESTABLISHED_LOS + totalOTHER_NEW_LOS) / (totalArrived) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_no_coverage = colDef(
-      name = "% No Coverage Assigned",
-      maxWidth = 100,
-      headerStyle = list(background = "#7030a0", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalNO_COVERAGE_ASSIGNED_ESTABLISHED_LOS = 0
-        let totalNO_COVERAGE_ASSIGNED_NEW_LOS = 0
-        let totalArrived = 0
-        rows.forEach(function(row) {
-          totalNO_COVERAGE_ASSIGNED_ESTABLISHED_LOS += row['NO_COVERAGE_ASSIGNED_ESTABLISHED_LOS']
-          totalNO_COVERAGE_ASSIGNED_NEW_LOS += row['NO_COVERAGE_ASSIGNED_NEW_LOS']
-          totalArrived += row['Arrived']
-        })
-        return (totalNO_COVERAGE_ASSIGNED_ESTABLISHED_LOS + totalNO_COVERAGE_ASSIGNED_NEW_LOS) / (totalArrived) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_est_lead_14days_mcr = colDef(
-      name = "% Established Medicare Scheduled within 14 Days",
-      maxWidth = 100,
-      headerStyle = list(background = "#ffcc00", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalMEDICARE_ESTABLISHED_lead_14days = 0
-        let totalMEDICARE_ESTABLISHED_lead_14days_more = 0
-        let totalMEDICARE_HMO_ESTABLISHED_lead_14days = 0
-        let totalMEDICARE_HMO_ESTABLISHED_lead_14days_more = 0
-        rows.forEach(function(row) {
-          totalMEDICARE_ESTABLISHED_lead_14days += row['MEDICARE_ESTABLISHED_lead_14days']
-          totalMEDICARE_ESTABLISHED_lead_14days_more += row['MEDICARE_ESTABLISHED_lead_14days_more']
-          totalMEDICARE_HMO_ESTABLISHED_lead_14days += row['MEDICARE_HMO_ESTABLISHED_lead_14days']
-          totalMEDICARE_HMO_ESTABLISHED_lead_14days_more += row['MEDICARE_HMO_ESTABLISHED_lead_14days_more']
-        })
-        return (totalMEDICARE_ESTABLISHED_lead_14days + totalMEDICARE_HMO_ESTABLISHED_lead_14days) / (totalMEDICARE_ESTABLISHED_lead_14days + totalMEDICARE_ESTABLISHED_lead_14days_more + totalMEDICARE_HMO_ESTABLISHED_lead_14days + totalMEDICARE_HMO_ESTABLISHED_lead_14days_more) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_est_lead_14days_mcd = colDef(
-      name = "% Established Medicaid Scheduled within 14 Days",
-      maxWidth = 100,
-      headerStyle = list(background = "#ffcc00", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalMEDICAID_ESTABLISHED_lead_14days = 0
-        let totalMEDICAID_ESTABLISHED_lead_14days_more = 0
-        let totalMEDICAID_HMO_ESTABLISHED_lead_14days = 0
-        let totalMEDICAID_HMO_ESTABLISHED_lead_14days_more = 0
-        rows.forEach(function(row) {
-          totalMEDICAID_ESTABLISHED_lead_14days += row['MEDICAID_ESTABLISHED_lead_14days']
-          totalMEDICAID_ESTABLISHED_lead_14days_more += row['MEDICAID_ESTABLISHED_lead_14days_more']
-          totalMEDICAID_HMO_ESTABLISHED_lead_14days += row['MEDICAID_HMO_ESTABLISHED_lead_14days']
-          totalMEDICAID_HMO_ESTABLISHED_lead_14days_more += row['MEDICAID_HMO_ESTABLISHED_lead_14days_more']
-        })
-        return (totalMEDICAID_ESTABLISHED_lead_14days + totalMEDICAID_HMO_ESTABLISHED_lead_14days) / (totalMEDICAID_ESTABLISHED_lead_14days + totalMEDICAID_ESTABLISHED_lead_14days_more + totalMEDICAID_HMO_ESTABLISHED_lead_14days + totalMEDICAID_HMO_ESTABLISHED_lead_14days_more) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_est_lead_14days_commercial = colDef(
-      name = "% Established Commercial Scheduled within 14 Days",
-      maxWidth = 100,
-      headerStyle = list(background = "#ffcc00", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days = 0
-        let totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days_more = 0
-        rows.forEach(function(row) {
-          totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days += row['COMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days']
-          totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days_more += row['COMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days_more']
-        })
-        return (totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days) / (totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days + totalCOMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days_more) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_new_lead_14days_mcr = colDef(
-      name = "% New Medicare Scheduled within 14 Days",
-      maxWidth = 100,
-      headerStyle = list(background = "#cca300", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalMEDICARE_NEW_lead_14days = 0
-        let totalMEDICARE_NEW_lead_14days_more = 0
-        let totalMEDICARE_HMO_NEW_lead_14days = 0
-        let totalMEDICARE_HMO_NEW_lead_14days_more = 0
-        rows.forEach(function(row) {
-          totalMEDICARE_NEW_lead_14days += row['MEDICARE_NEW_lead_14days']
-          totalMEDICARE_NEW_lead_14days_more += row['MEDICARE_NEW_lead_14days_more']
-          totalMEDICARE_HMO_NEW_lead_14days += row['MEDICARE_HMO_NEW_lead_14days']
-          totalMEDICARE_HMO_NEW_lead_14days_more += row['MEDICARE_HMO_NEW_lead_14days_more']
-        })
-        return (totalMEDICARE_NEW_lead_14days + totalMEDICARE_HMO_NEW_lead_14days) / (totalMEDICARE_NEW_lead_14days + totalMEDICARE_NEW_lead_14days_more + totalMEDICARE_HMO_NEW_lead_14days + totalMEDICARE_HMO_NEW_lead_14days_more) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_new_lead_14days_mcd = colDef(
-      name = "% New Medicaid Scheduled within 14 Days",
-      maxWidth = 100,
-      headerStyle = list(background = "#cca300", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalMEDICAID_NEW_lead_14days = 0
-        let totalMEDICAID_NEW_lead_14days_more = 0
-        let totalMEDICAID_HMO_NEW_lead_14days = 0
-        let totalMEDICAID_HMO_NEW_lead_14days_more = 0
-        rows.forEach(function(row) {
-          totalMEDICAID_NEW_lead_14days += row['MEDICAID_NEW_lead_14days']
-          totalMEDICAID_NEW_lead_14days_more += row['MEDICAID_NEW_lead_14days_more']
-          totalMEDICAID_HMO_NEW_lead_14days += row['MEDICAID_HMO_NEW_lead_14days']
-          totalMEDICAID_HMO_NEW_lead_14days_more += row['MEDICAID_HMO_NEW_lead_14days_more']
-        })
-        return (totalMEDICAID_NEW_lead_14days + totalMEDICAID_HMO_NEW_lead_14days) / (totalMEDICAID_NEW_lead_14days + totalMEDICAID_NEW_lead_14days_more + totalMEDICAID_HMO_NEW_lead_14days + totalMEDICAID_HMO_NEW_lead_14days_more) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-    
-    perc_new_lead_14days_commercial = colDef(
-      name = "% New Commercial Scheduled within 14 Days",
-      maxWidth = 100,
-      headerStyle = list(background = "#cca300", color = "white", fontWeight = "Bold", fontSize = "14px"),
-      aggregate = JS("function(values, rows) {
-        let totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days = 0
-        let totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days_more = 0
-        rows.forEach(function(row) {
-          totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days += row['COMMERCIAL_MANAGED_CARE_NEW_lead_14days']
-          totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days_more += row['COMMERCIAL_MANAGED_CARE_NEW_lead_14days_more']
-        })
-        return (totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days) / (totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days + totalCOMMERCIAL_MANAGED_CARE_NEW_lead_14days_more) || '-'
-      }"),
-      format = colFormat(percent = TRUE, digits = 1)
-    ),
-
-    Month = colDef(show =F),
-    DEPARTMENT_ID = colDef(show =F),
-    PROV_ID = colDef(show =F),
-    sched_hours = colDef(show =F),
-    arrived_hours = colDef(show =F),
-    sched_hours = colDef(show =F),
-    arrived_hours = colDef(show =F),
-    Arrived = colDef(show =F),
-    SameDay_Canceled = colDef(show =F),
-    No_Show = colDef(show =F),
-    perc_noShow = colDef(show =F),
-    perc_SameDayCanceled = colDef(show =F),
-    NEW_LOS = colDef(show =F),
-    appts_arrived = colDef(show =F),
-    ESTABLISHED_LOS = colDef(show =F),
-    total_referrals = colDef(show =F),
-    # total_scheduled = colDef(show =F),
-    total_completed = colDef(show =F),
-    total_tkt_sent_automated = colDef(show =F),
-    total_tkt_sent_scheduler = colDef(show =F),
-    total_tkt_sent_both = colDef(show =F),
-    total_tkt_sent = colDef(show =F),
-    non_converted_None = colDef(show =F),
-    non_converted_Automated = colDef(show =F),
-    non_converted_Scheduler = colDef(show =F),
-    non_converted_Both = colDef(show =F),
-    scheduled_None = colDef(show =F),
-    scheduled_Automated = colDef(show =F),
-    scheduled_Scheduler = colDef(show =F),
-    scheduled_Both = colDef(show =F),
-    perc_tkt_sent_scheduler = colDef(show =F),
-    perc_tkt_sent_both = colDef(show =F),
-    completed_None = colDef(show =F),
-    completed_Automated = colDef(show =F),
-    completed_Scheduler = colDef(show =F),
-    completed_Both = colDef(show =F),
-    ESTABLISHED = colDef(show =F),
-    NEW = colDef(show =F),
-    appts_scheduled = colDef(show =F),
-    perc_new = colDef(show =F),
-    NEW_lead_14days = colDef(show =F),
-    NEW_lead_14days_more = colDef(show =F),
-    NEW_appts_scheduled = colDef(show =F),
-    perc_new_lead_14days = colDef(show =F),
-    avail_N_sched_N = colDef(show =F),
-    avail_Y_sched_N = colDef(show =F),
-    avail_Y_sched_Y = colDef(show =F),
-    
-    MEDICARE_HMO_ESTABLISHED_LOS = colDef(show =F),
-    COMMERCIAL_MANAGED_CARE_NEW_LOS = colDef(show =F),
-    MEDICARE_ESTABLISHED_LOS = colDef(show =F),
-    OTHER_ESTABLISHED_LOS = colDef(show =F),
-    MEDICARE_NEW_LOS = colDef(show =F),
-    MEDICAID_HMO_ESTABLISHED_LOS = colDef(show =F),
-    COMMERCIAL_MANAGED_CARE_ESTABLISHED_LOS = colDef(show =F),
-    MEDICAID_ESTABLISHED_LOS = colDef(show =F),
-    MEDICARE_HMO_NEW_LOS = colDef(show =F),
-    SELF_PAY_ESTABLISHED_LOS = colDef(show =F),
-    SELF_PAY_NEW_LOS = colDef(show =F),
-    MEDICAID_HMO_NEW_LOS = colDef(show =F),
-    OTHER_NEW_LOS = colDef(show =F),
-    MEDICAID_NEW_LOS = colDef(show =F),
-    NO_COVERAGE_ASSIGNED_ESTABLISHED_LOS = colDef(show =F),
-    NO_COVERAGE_ASSIGNED_NEW_LOS = colDef(show =F),
-    MEDICAID_ESTABLISHED_lead_14days = colDef(show =F),
-    MEDICARE_HMO_ESTABLISHED_lead_14days_more = colDef(show =F),
-    MEDICARE_NEW_lead_14days_more = colDef(show =F),
-    MEDICAID_NEW_lead_14days_more = colDef(show =F),
-    MEDICARE_ESTABLISHED_lead_14days = colDef(show =F),
-    MEDICAID_HMO_ESTABLISHED_lead_14days_more = colDef(show =F),
-    COMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days_more = colDef(show =F),
-    MEDICAID_HMO_ESTABLISHED_lead_14days = colDef(show =F),
-    COMMERCIAL_MANAGED_CARE_NEW_lead_14days = colDef(show =F),
-    MEDICAID_HMO_NEW_lead_14days_more = colDef(show =F),
-    COMMERCIAL_MANAGED_CARE_ESTABLISHED_lead_14days = colDef(show =F),
-    SELF_PAY_NEW_lead_14days = colDef(show =F),
-    MEDICARE_NEW_lead_14days = colDef(show =F),
-    MEDICARE_ESTABLISHED_lead_14days_more = colDef(show =F),
-    SELF_PAY_ESTABLISHED_lead_14days = colDef(show =F),
-    MEDICARE_HMO_ESTABLISHED_lead_14days = colDef(show =F),
-    COMMERCIAL_MANAGED_CARE_NEW_lead_14days_more = colDef(show =F),
-    MEDICARE_HMO_NEW_lead_14days = colDef(show =F),
-    SELF_PAY_ESTABLISHED_lead_14days_more = colDef(show =F),
-    OTHER_ESTABLISHED_lead_14days_more = colDef(show =F),
-    MEDICAID_NEW_lead_14days = colDef(show =F),
-    SELF_PAY_NEW_lead_14days_more = colDef(show =F),
-    NO_COVERAGE_ASSIGNED_ESTABLISHED_lead_14days_more = colDef(show =F),
-    MEDICAID_ESTABLISHED_lead_14days_more = colDef(show =F),
-    MEDICARE_HMO_NEW_lead_14days_more = colDef(show =F),
-    MEDICAID_HMO_NEW_lead_14days = colDef(show =F),
-    NO_COVERAGE_ASSIGNED_NEW_lead_14days_more = colDef(show =F),
-    NO_COVERAGE_ASSIGNED_ESTABLISHED_lead_14days = colDef(show =F),
-    OTHER_ESTABLISHED_lead_14days = colDef(show =F),
-    NO_COVERAGE_ASSIGNED_NEW_lead_14days = colDef(show =F),
-    OTHER_NEW_lead_14days = colDef(show =F),
-    OTHER_NEW_lead_14days_more = colDef(show =F)
-
-
-  ) # Close Columns
-
-  ) # Close Reactable
-# ) # Close Taglist
-# ) # Close htmltools
-
-```
-<br/>
-<p style="font-size:10pt; font-style:italic">*New Patient is defined by level of service; New Patient Ratio is calculated based on (Total New Patients Arrived) / (Total Patients Arrived)<p/>
-<p style="font-size:10pt; font-style:italic">*Primary Care includes Adolescent Medicine, Community and Preventative Medicine, Internal Medicine, Family Medicine, Pediatrics, Geriatrics, Urgent Care<p/>
-
-
-
-<br/>
-<br/>
+<!-- <br/> -->
+<!-- <br/> -->
