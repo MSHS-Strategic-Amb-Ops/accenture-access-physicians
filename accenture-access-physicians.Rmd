@@ -2082,7 +2082,7 @@ knitr::include_graphics("Mount_Sinai_Logo_H.png")
 ```
 
 
-# Access Workstream Metrics & Impact {.tabset .tabset-fade .tabset-pills}
+# Metrics Overview {.tabset .tabset-fade .tabset-pills}
 *Report run date: `r report_run_date`*<br/>
 *Excludes templates with provider utilization <30% & >150% per month*<br/>
 *Excludes MSH-Ambulatory Care Templates from Jan-May 2024*<br/>
