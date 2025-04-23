@@ -4,7 +4,7 @@
   "platform": "4.2.3",
   "metadata": {
     "appmode": "rmd-static",
-    "primary_rmd": "accenture-access-physicians.Rmd",
+    "primary_rmd": "accenture-access-department.Rmd",
     "primary_html": null,
     "content_category": null,
     "has_parameters": false
@@ -7361,8 +7361,14 @@
     }
   },
   "files": {
-    "accenture-access-physicians.Rmd": {
-      "checksum": "3c2f65749311fcb9d55488cdc05b87e1"
+    "accenture-access-department.Rmd": {
+      "checksum": "10a4788544475c146c4dc6471575b0ed"
+    },
+    "Metric Overview by Provider_042325.xlsx": {
+      "checksum": "143450b67ad4138b9f1cd425ec57ed0f"
+    },
+    "Mount_Sinai_Logo_H.png": {
+      "checksum": "2947092f1b4ba7d991e336025e6b44d7"
     },
     "README.md": {
       "checksum": "174151768cda733c77b3fbf2611634d5"
