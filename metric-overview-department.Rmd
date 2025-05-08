@@ -342,6 +342,13 @@ clarity_ser_tbl <- tbl(conn2, "CLARITY_SER")
 slot_view_tbl <- tbl(conn3, in_schema("OAO_PRODUCTION", "AMBULATORY_SLOT_TABLE"))
 temp_slot_tbl <- tbl(conn4, "AMBULATORY_SLOT_TABLE_TEMP")
 
+
+dep_mapping_tbl <- tbl(conn2, "CLARITY_DEP")
+dep_mapping <- dep_mapping_tbl %>%
+  dplyr::select(DEPARTMENT_ID, SPECIALTY) %>%
+  collect()
+
+
 radiology_dep_mapping_tbl <- tbl(conn1, "RADIOLOGY_DEP_MAPPING")
 
 # access_raw_tbl <- tbl(conn5, in_schema("CLARITY", "MV_DM_PATIENT_ACCESS"))
@@ -466,10 +473,7 @@ slot_util <- slot_view_tbl %>%
          slot_month = month(SLOT_DATE)) %>%
   filter(slot_year >= prior_year) %>%
   filter(SLOT_DATE < TO_DATE(date_start, "YYYY-MM-DD HH24:MI:SS")) %>%
-  mutate(SPECIALTY_GRP = ifelse(CAMPUS_SPECIALTY %in% 
-                                  c("Adolescent Medicine", "Community and Preventive Medicine", 
-                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
-  group_by(CAMPUS, SPECIALTY_GRP, CAMPUS_SPECIALTY, DEPARTMENT, DEPARTMENT_ID, PROVIDER, PROV_ID, slot_year, slot_month) %>%
+  group_by(CAMPUS, DEPARTMENT_ID, DEPARTMENT, PROVIDER, PROV_ID, slot_year, slot_month) %>%
   summarise(AVAILABLE_MINS= sum(AVAILABLE_MINS, na.rm = T),
             SCHEDULED_MINS = sum(SCHEDULED_MINS, na.rm = T),
             ARRIVED_MINS = sum(ARRIVED_MINS, na.rm = T)) %>%
@@ -477,7 +481,15 @@ slot_util <- slot_view_tbl %>%
   filter(sched_util > 0.3 & sched_util <= 1.5) %>%
   collect() %>%
   left_join(clarity_ser) %>%
-  left_join(clarity_ser_2)
+  left_join(clarity_ser_2) %>%
+  left_join(dep_mapping) %>%
+  mutate(SPECIALTY_GRP = ifelse(SPECIALTY %in%
+                                  c("Adolescent Medicine", "Community and Preventive Medicine",
+                                    "Family Medicine", "Internal Medicine", "Pediatrics", "Geriatrics", "Gerontology", "Urgent Care"), "Primary Care", "Specialty")) %>%
+  rename(DEPT_SPECIALTY_NAME = SPECIALTY) %>%
+  relocate(DEPT_SPECIALTY_NAME, .before = DEPARTMENT) %>%
+  relocate(DEPARTMENT_ID, .after = DEPARTMENT) %>%
+  relocate(SPECIALTY_GRP, .before = DEPT_SPECIALTY_NAME) 
 
 
 
@@ -1695,6 +1707,7 @@ appt_online_prov <- access_raw_tbl %>%
               dplyr::select(PAT_ENC_CSN_ID, COULD_DIR_SCHED_C, COULD_OPEN_SCHED_C, COULD_TKT_SCHED_C, APPT_SCHED_SOURCE_C, PAT_ONLINE_YN)) %>%
   group_by(SITE, SPECIALTY_GRP, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, PROV_ID, PROV_TYPE, PROV_NAME,
            appt_made_year, appt_made_month,
+           visit_type, PRC_NAME,
            COULD_DIR_SCHED_C, COULD_OPEN_SCHED_C, COULD_TKT_SCHED_C, APPT_SCHED_SOURCE_C, APPT_SCHED_SOURCE, DERIVED_STATUS_DESC, SCHED_METHOD, PAT_ONLINE_YN, WALK_IN_YN) %>%
   summarise(total = n()) %>%
   collect()
